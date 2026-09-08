@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>联系我们 - 周口云鸿商贸有限公司</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a href="index.html" class="logo">
+        云鸿商贸
+        <span>周口云鸿商贸有限公司</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html">首页</a>
+        <a href="products.html">产品中心</a>
+        <a href="about.html">关于我们</a>
+        <a href="contact.html" class="active">联系我们</a>
+      </nav>
+      <div class="header-contact">
+        <a href="tel:0394-2298776">☎ 0394-2298776</a>
+        <button class="cart-btn" title="购物车" aria-label="购物车">
+          🛒
+          <span class="cart-count" style="display:none;"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-title">
+        <h2>联系我们</h2>
+        <p>欢迎随时咨询，我们将尽快为您服务</p>
+      </div>
+
+      <div class="contact-grid">
+        <div class="contact-info">
+          <h3>联系方式</h3>
+
+          <div class="contact-item">
+            <div class="icon">👤</div>
+            <div>
+              <strong>联系人</strong>
+              <span>赵云</span>
+            </div>
+          </div>
+
+          <div class="contact-item">
+            <div class="icon">☎</div>
+            <div>
+              <strong>联系电话</strong>
+              <a href="tel:0394-2298776">0394-2298776</a>
+            </div>
+          </div>
+
+          <div class="contact-item">
+            <div class="icon">✉</div>
+            <div>
+              <strong>电子邮箱</strong>
+              <a href="mailto:vicent@youyang168.com">vicent@youyang168.com</a>
+            </div>
+          </div>
+
+          <div class="contact-item">
+            <div class="icon">🏢</div>
+            <div>
+              <strong>公司名称</strong>
+              <span>周口云鸿商贸有限公司</span>
+            </div>
+          </div>
+
+          <div style="margin-top:36px;">
+            <a href="tel:0394-2298776" class="btn" style="margin-right:12px;">拨打电话</a>
+            <a href="mailto:vicent@youyang168.com" class="btn btn-outline">发送邮件</a>
+          </div>
+        </div>
+
+        <div class="qr-box">
+          <h3 style="margin-bottom:18px;font-size:18px;">微信扫码咨询</h3>
+          <img src="wechat-qrcode.jpg" alt="微信二维码 - 赵云">
+          <p>扫描上方二维码<br>添加微信好友，获取更多产品信息与报价</p>
+        </div>
+      </div>
+
+      <div class="inquiry-form" id="inquiry">
+        <h3>在线询价表单</h3>
+        <div class="form-success">提交成功！正在打开您的邮件客户端，请确认发送。</div>
+        <form id="inquiry-form">
+          <div class="form-row">
+            <label>您的姓名 *</label>
+            <input type="text" name="name" placeholder="请输入姓名" required>
+          </div>
+          <div class="form-row">
+            <label>联系电话 *</label>
+            <input type="tel" name="phone" placeholder="请输入手机或固话" required>
+          </div>
+          <div class="form-row">
+            <label>电子邮箱</label>
+            <input type="email" name="email" placeholder="选填，方便我们回复">
+          </div>
+          <div class="form-row">
+            <label>询价内容 *</label>
+            <textarea name="message" placeholder="请描述您需要的产品名称、数量、规格等需求..." required></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn">提交询价</button>
+            <a href="tel:0394-2298776" class="btn btn-outline">直接电话联系</a>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <h4>周口云鸿商贸有限公司</h4>
+        <p>专业商贸服务，诚信经营，品质保障。</p>
+      </div>
+      <div>
+        <h4>快速链接</h4>
+        <p>
+          <a href="index.html">首页</a><br>
+          <a href="products.html">产品中心</a><br>
+          <a href="about.html">关于我们</a><br>
+          <a href="contact.html">联系我们</a>
+        </p>
+      </div>
+      <div>
+        <h4>联系方式</h4>
+        <p>
+          联系人：赵云<br>
+          电话：0394-2298776<br>
+          邮箱：vicent@youyang168.com
+        </p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      © 2026 周口云鸿商贸有限公司 版权所有
+    </div>
+  </footer>
+
+  <script src="cart.js"></script>
+</body>
+</html>
