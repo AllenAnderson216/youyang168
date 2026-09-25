@@ -1,0 +1,10 @@
+name = "youyang168-pages"
+compatibility_date = "2026-09-01"
+pages_build_output_dir = "."
+
+# Cloudflare Pages / Functions uses this binding at runtime.
+# Replace the placeholder with your real D1 database ID before using Wrangler.
+[[d1_databases]]
+binding = "DB"
+database_name = "youyang168-orders"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
