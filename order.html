@@ -1,3 +1,117 @@
 <!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>订单 - 周口云鸿商贸有限公司</title><link rel="stylesheet" href="styles.css"><style>.order-wrap{max-width:800px;margin:0 auto;padding:60px 20px}.status-card{background:#fff;border:1px solid #eee;border-radius:18px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.05)}.status{font-size:28px;font-weight:700;margin:10px 0 20px}.detail{line-height:2}.actions{display:flex;gap:12px;margin-top:24px}.actions .btn{flex:1;text-align:center}.pay-box{margin-top:24px;padding:22px;border-radius:14px;background:#f7f8fa;text-align:center}.qr-fallback{padding:20px;background:#fff;border-radius:12px;margin:14px 0}.qr-fallback a{word-break:break-all}.error{color:#b42318}.muted{color:#777;font-size:14px}</style></head><body><header class="header"><div class="header-inner"><a href="index.html" class="logo">云鸿商贸<span>周口云鸿商贸有限公司</span></a><nav class="nav"><a href="index.html">首页</a><a href="products.html">产品中心</a><a href="contact.html">联系我们</a></nav></div></header><main><div class="order-wrap"><div class="status-card"><div class="section-kicker">ORDER</div><h1>订单详情</h1><div id="content">正在查询订单…</div><div class="actions"><a class="btn" href="products.html">继续购物</a><a class="btn" href="index.html">返回首页</a></div></div></div></main><script>
-(async()=>{const qs0=new URLSearchParams(location.search);const id=qs0.get('id')||qs0.get('out_trade_no')||qs0.get('out_trade_no'),el=document.getElementById('content');if(!id){el.innerHTML='<p>缺少订单号。</p>';return;}try{const r=await fetch('/api/order-status?id='+encodeURIComponent(id));const d=await r.json();if(!r.ok)throw new Error(d.error||'查询失败');const o=d.order;const statusMap={pending_payment:'待付款',paid:'已付款',processing:'处理中',shipped:'已发货',completed:'已完成',cancelled:'已取消',refunded:'已退款'};const qs=new URLSearchParams(location.search);const codeUrl=qs.get('code_url');const paymentError=qs.get('payment_error');el.innerHTML=`<div class="status">${statusMap[o.status]||o.status}</div><div class="detail"><b>订单号：</b>${o.id}<br><b>订单金额：</b>¥${o.total}<br><b>下单时间：</b>${o.created_at}<br><b>商品：</b>${o.items.map(i=>i.product_name+' × '+i.qty).join('；')}</div>${paymentError?`<p class="error">${paymentError}</p>`:''}${codeUrl&&o.status==='pending_payment'?`<div class="pay-box"><h2>微信支付</h2><p>请使用微信扫一扫完成支付。</p><div class="qr-fallback"><a href="${codeUrl}">打开微信支付链接</a></div><p class="muted">支付后本页面会自动查询订单状态。</p></div>`:''}`;if(o.status==='pending_payment'){setTimeout(()=>location.reload(),5000);}}catch(e){el.innerHTML='<p>'+e.message+'</p>';}})();
+(() => {
+  const qs = new URLSearchParams(location.search);
+  const id = qs.get('id');
+  const el = document.getElementById('content');
+  if (!id) { el.innerHTML = '<p>缺少订单号。</p>'; return; }
+
+  const statusMap = { pending_payment:'待付款', paid:'已付款', processing:'处理中', shipped:'已发货', completed:'已完成', cancelled:'已取消', refunded:'已退款' };
+  const escapeHtml = s => String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+
+  // 首次打开时链接里可能自带 code_url / payment_error（下单后立即跳转过来的情况）
+  let codeUrl = qs.get('code_url') || '';
+  let paymentError = qs.get('payment_error') || '';
+  let pollTimer = null;
+  let requesting = false;
+
+  async function requestPaymentLink(method) {
+    requesting = true;
+    try {
+      const r = await fetch('/api/payment', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ orderId: id, method }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.ok) {
+        if (method === 'wechat' && d.codeUrl) { codeUrl = d.codeUrl; paymentError = ''; return 'ok'; }
+        if (method === 'alipay' && d.paymentHtml) { document.open(); document.write(d.paymentHtml); document.close(); return 'redirected'; }
+      }
+      paymentError = (d && d.message) || '支付通道暂不可用，请稍后重试';
+      return 'error';
+    } catch (e) {
+      paymentError = '网络异常，请稍后重试';
+      return 'error';
+    } finally {
+      requesting = false;
+    }
+  }
+
+  function renderPayBox(o) {
+    if (o.status !== 'pending_payment') return '';
+    if (codeUrl) {
+      return `<div class="pay-box"><h2>微信支付</h2><p>请使用微信扫一扫完成支付。</p><div class="qr-fallback"><a href="${codeUrl}">打开微信支付链接</a></div><p class="muted">支付后本页面会自动查询订单状态。</p></div>`;
+    }
+    if (requesting) {
+      return `<div class="pay-box"><p>正在生成支付链接…</p></div>`;
+    }
+    // 还没有支付链接：如果订单已经选过支付方式就给一个“重新获取”按钮，否则让客户重新选支付方式
+    if (o.payment_method === 'wechat' || o.payment_method === 'alipay') {
+      return `<div class="pay-box"><p>支付链接已失效或尚未生成。</p><button id="retry-pay" class="btn" data-method="${o.payment_method}">重新获取${o.payment_method === 'wechat' ? '微信' : '支付宝'}支付链接</button></div>`;
+    }
+    return `<div class="pay-box"><h2>选择支付方式继续付款</h2><div class="actions"><button id="pay-wechat" class="btn" data-method="wechat">微信支付</button><button id="pay-alipay" class="btn" data-method="alipay">支付宝</button></div></div>`;
+  }
+
+  async function render() {
+    let r, d;
+    try {
+      r = await fetch('/api/order-status?id=' + encodeURIComponent(id));
+      d = await r.json();
+      if (!r.ok) throw new Error(d.error || '查询失败');
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + escapeHtml(e.message) + '</p>';
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      return;
+    }
+    const o = d.order;
+    const payBoxHtml = renderPayBox(o);
+    el.innerHTML = `<div class="status">${statusMap[o.status] || o.status}</div><div class="detail"><b>订单号：</b>${escapeHtml(o.id)}<br><b>订单金额：</b>¥${o.total}<br><b>下单时间：</b>${o.created_at}<br><b>商品：</b>${o.items.map(i => escapeHtml(i.product_name) + ' × ' + i.qty).join('；')}</div>${paymentError ? `<p class="error">${escapeHtml(paymentError)}</p>` : ''}${payBoxHtml}`;
+
+    const wechatBtn = document.getElementById('pay-wechat');
+    const alipayBtn = document.getElementById('pay-alipay');
+    const retryBtn = document.getElementById('retry-pay');
+    if (wechatBtn) wechatBtn.onclick = () => choose('wechat');
+    if (alipayBtn) alipayBtn.onclick = () => choose('alipay');
+    if (retryBtn) retryBtn.onclick = () => choose(retryBtn.dataset.method);
+
+    if (o.status === 'pending_payment') {
+      if (!pollTimer) pollTimer = setInterval(render, 5000);
+    } else if (pollTimer) {
+      clearInterval(pollTimer); pollTimer = null;
+    }
+  }
+
+  async function choose(method) {
+    if (requesting) return;
+    render_loading();
+    const result = await requestPaymentLink(method);
+    if (result === 'redirected') return;
+    render();
+  }
+
+  function render_loading() {
+    requesting = true;
+    render();
+  }
+
+  async function init() {
+    // 打开页面时，如果是待付款订单、URL 里又没带 code_url（比如用户是重新回到这个链接，或者从后台/数据库拿订单号直接访问），
+    // 且订单之前已经选过支付方式，就自动帮客户重新生成一个支付链接，不需要客户自己操作。
+    let r, d;
+    try {
+      r = await fetch('/api/order-status?id=' + encodeURIComponent(id));
+      d = await r.json();
+      if (!r.ok) throw new Error(d.error || '查询失败');
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + escapeHtml(e.message) + '</p>';
+      return;
+    }
+    const o = d.order;
+    if (o.status === 'pending_payment' && !codeUrl && !paymentError && (o.payment_method === 'wechat' || o.payment_method === 'alipay')) {
+      requesting = true;
+      const result = await requestPaymentLink(o.payment_method);
+      requesting = false;
+      if (result === 'redirected') return;
+    }
+    render();
+  }
+
+  init();
+})();
 </script></body></html>
