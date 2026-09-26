@@ -1,8 +1,19 @@
 (() => {
-  const cart = JSON.parse(localStorage.getItem('yunhong_cart') || '[]');
+  const qs = new URLSearchParams(location.search);
+  const isBuyNow = qs.get('buynow') === '1';
+
+  let cart;
+  if (isBuyNow) {
+    let buyNowItem = null;
+    try { buyNowItem = JSON.parse(sessionStorage.getItem('yunhong_buynow_item') || 'null'); } catch {}
+    cart = buyNowItem ? [buyNowItem] : [];
+  } else {
+    cart = JSON.parse(localStorage.getItem('yunhong_cart') || '[]');
+  }
+
   const itemsEl = document.getElementById('items'), totalEl = document.getElementById('total'), msg = document.getElementById('msg');
   const escapeHtml = s => String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  if (!cart.length) { itemsEl.innerHTML = '<p>购物车为空，请先选择商品。</p>'; document.querySelector('#checkout-form button').disabled = true; return; }
+  if (!cart.length) { itemsEl.innerHTML = '<p>' + (isBuyNow ? '商品信息已失效，请返回商品页重新下单。' : '购物车为空，请先选择商品。') + '</p>'; document.querySelector('#checkout-form button').disabled = true; return; }
   itemsEl.innerHTML = cart.map(i => `<div class="order-row"><span>${escapeHtml(i.name)} × ${i.qty}</span><span>以服务器最终核价为准</span></div>`).join('');
   totalEl.textContent = '提交后由服务器计算';
 
@@ -13,7 +24,7 @@
     try {
       const r = await fetch('/api/order',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
       const data = await r.json(); if (!r.ok) throw new Error(data.error || '订单创建失败');
-      localStorage.removeItem('yunhong_cart');
+      if (isBuyNow) { sessionStorage.removeItem('yunhong_buynow_item'); } else { localStorage.removeItem('yunhong_cart'); }
       const method = fd.get('payment');
       const payResp = await fetch('/api/payment',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderId:data.orderId,method})});
       const payData = await payResp.json();

@@ -170,6 +170,18 @@
       });
     });
 
+    // 立即下单按钮：不经过购物车，单独结算这一件商品
+    document.querySelectorAll('[data-buy-now]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = btn.dataset.id || btn.dataset.buyNow;
+        const name = btn.dataset.name || '商品';
+        const price = btn.dataset.price || '询价';
+        sessionStorage.setItem('yunhong_buynow_item', JSON.stringify({ id, name, price, qty: 1 }));
+        window.location.href = 'checkout.html?buynow=1';
+      });
+    });
+
     // 询价表单
     const form = document.getElementById('inquiry-form');
     if (form) {
