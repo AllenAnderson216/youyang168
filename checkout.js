@@ -14,8 +14,19 @@
   const itemsEl = document.getElementById('items'), totalEl = document.getElementById('total'), msg = document.getElementById('msg');
   const escapeHtml = s => String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   if (!cart.length) { itemsEl.innerHTML = '<p>' + (isBuyNow ? '商品信息已失效，请返回商品页重新下单。' : '购物车为空，请先选择商品。') + '</p>'; document.querySelector('#checkout-form button').disabled = true; return; }
-  itemsEl.innerHTML = cart.map(i => `<div class="order-row"><span>${escapeHtml(i.name)} × ${i.qty}</span><span>以服务器最终核价为准</span></div>`).join('');
-  totalEl.textContent = '提交后由服务器计算';
+
+  // 从加入购物车/立即下单时保存的价格文案（如“¥198/盒”）中提取数字单价，仅用于页面展示预估金额；
+  // 真正生效、防篡改的金额以服务器 /api/order 用商品目录重新核算的结果为准。
+  const unitPrice = s => { const m = String(s).match(/[\d.]+/); return m ? parseFloat(m[0]) : 0; };
+
+  itemsEl.innerHTML = cart.map(i => {
+    const price = unitPrice(i.price);
+    const lineTotal = (price * i.qty).toFixed(2);
+    return `<div class="order-row"><span>${escapeHtml(i.name)} × ${i.qty}</span><span>¥${lineTotal}</span></div>`;
+  }).join('');
+
+  const total = cart.reduce((sum, i) => sum + unitPrice(i.price) * i.qty, 0);
+  totalEl.textContent = '¥' + total.toFixed(2);
 
   document.getElementById('checkout-form').addEventListener('submit', async e => {
     e.preventDefault(); msg.textContent = '正在创建订单…';
