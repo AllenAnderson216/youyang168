@@ -13,12 +13,25 @@ export async function onRequestPost({ request, env }) {
   }
 
   const { orderId, action } = body;
-  if (!orderId || !['ship', 'complete'].includes(action)) {
+  if (!orderId || !['ship', 'complete', 'delete'].includes(action)) {
     return json({ error: '参数错误' }, 400);
   }
 
   const order = await env.DB.prepare(`SELECT * FROM orders WHERE id = ?`).bind(orderId).first();
   if (!order) return json({ error: '订单不存在' }, 404);
+
+  if (action === 'delete') {
+    // 只允许彻底删除“待付款”或“已取消”的订单：这两种状态从未产生过真实收款，
+    // 已付款/已发货/已完成的订单一律不能这样删掉，需要走退款流程，避免误删真实交易记录。
+    if (!['pending_payment', 'cancelled'].includes(order.status)) {
+      return json({ error: '只有待付款或已取消的订单可以删除' }, 409);
+    }
+    await env.DB.batch([
+      env.DB.prepare(`DELETE FROM order_items WHERE order_id = ?`).bind(orderId),
+      env.DB.prepare(`DELETE FROM orders WHERE id = ?`).bind(orderId),
+    ]);
+    return json({ ok: true });
+  }
 
   if (action === 'ship') {
     if (order.status !== 'paid') return json({ error: '只有已付款订单可以发货' }, 409);
