@@ -93,6 +93,10 @@
     overlay.classList.add('show');
   }
 
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  }
+
   function renderCartModal() {
     const cart = getCart();
     const body = document.querySelector('.cart-modal-body');
@@ -108,15 +112,15 @@
     body.innerHTML = cart.map(item => `
       <div class="cart-item">
         <div class="cart-item-info">
-          <h4>${item.name}</h4>
-          <div class="price">${item.price}</div>
+          <h4>${escapeHtml(item.name)}</h4>
+          <div class="price">${escapeHtml(item.price)}</div>
         </div>
         <div class="cart-item-qty">
-          <button data-action="minus" data-id="${item.id}">−</button>
+          <button data-action="minus" data-id="${escapeHtml(item.id)}">−</button>
           <span>${item.qty}</span>
-          <button data-action="plus" data-id="${item.id}">+</button>
+          <button data-action="plus" data-id="${escapeHtml(item.id)}">+</button>
         </div>
-        <button class="cart-item-remove" data-action="remove" data-id="${item.id}" title="删除">×</button>
+        <button class="cart-item-remove" data-action="remove" data-id="${escapeHtml(item.id)}" title="删除">×</button>
       </div>
     `).join('');
 

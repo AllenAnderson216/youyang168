@@ -8,7 +8,6 @@
   const statusMap = { pending_payment:'待付款', paid:'已付款', processing:'处理中', shipped:'已发货', completed:'已完成', cancelled:'已取消', refunded:'已退款' };
   const escapeHtml = s => String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
-  // 首次打开时链接里可能自带 code_url / payment_error（下单后立即跳转过来的情况）
   let codeUrl = qs.get('code_url') || '';
   let paymentError = qs.get('payment_error') || '';
   let pollTimer = null;
@@ -42,7 +41,6 @@
     if (requesting) {
       return `<div class="pay-box"><p>正在生成支付链接…</p></div>`;
     }
-    // 还没有支付链接：如果订单已经选过支付方式就给一个“重新获取”按钮，否则让客户重新选支付方式
     if (o.payment_method === 'wechat' || o.payment_method === 'alipay') {
       return `<div class="pay-box"><p>支付链接已失效或尚未生成。</p><button id="retry-pay" class="btn" data-method="${o.payment_method}">重新获取${o.payment_method === 'wechat' ? '微信' : '支付宝'}支付链接</button></div>${cancelHtml}`;
     }
@@ -82,7 +80,8 @@
 
   async function choose(method) {
     if (requesting) return;
-    render_loading();
+    requesting = true;
+    render();
     const result = await requestPaymentLink(method);
     if (result === 'redirected') return;
     render();
@@ -104,14 +103,7 @@
     }
   }
 
-  function render_loading() {
-    requesting = true;
-    render();
-  }
-
   async function init() {
-    // 打开页面时，如果是待付款订单、URL 里又没带 code_url（比如用户是重新回到这个链接，或者从后台/数据库拿订单号直接访问），
-    // 且订单之前已经选过支付方式，就自动帮客户重新生成一个支付链接，不需要客户自己操作。
     let r, d;
     try {
       r = await fetch('/api/order-status?id=' + encodeURIComponent(id));
