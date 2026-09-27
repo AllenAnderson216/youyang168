@@ -15,6 +15,7 @@ export async function onRequestGet({ request, env }) {
     order: {
       id: order.id,
       status: order.status,
+      payment_method: order.payment_method,
       total: (order.total_cents / 100).toFixed(2),
       created_at: order.created_at,
       shipping_company: order.shipping_company,
