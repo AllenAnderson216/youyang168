@@ -35,17 +35,18 @@
 
   function renderPayBox(o) {
     if (o.status !== 'pending_payment') return '';
+    const cancelHtml = `<div class="actions"><button id="cancel-order" class="btn btn-outline">取消订单</button></div>`;
     if (codeUrl) {
-      return `<div class="pay-box"><h2>微信支付</h2><p>请使用微信扫一扫完成支付。</p><div class="qr-fallback"><a href="${codeUrl}">打开微信支付链接</a></div><p class="muted">支付后本页面会自动查询订单状态。</p></div>`;
+      return `<div class="pay-box"><h2>微信支付</h2><p>请使用微信扫一扫完成支付。</p><div class="qr-fallback"><a href="${codeUrl}">打开微信支付链接</a></div><p class="muted">支付后本页面会自动查询订单状态。</p></div>${cancelHtml}`;
     }
     if (requesting) {
       return `<div class="pay-box"><p>正在生成支付链接…</p></div>`;
     }
     // 还没有支付链接：如果订单已经选过支付方式就给一个“重新获取”按钮，否则让客户重新选支付方式
     if (o.payment_method === 'wechat' || o.payment_method === 'alipay') {
-      return `<div class="pay-box"><p>支付链接已失效或尚未生成。</p><button id="retry-pay" class="btn" data-method="${o.payment_method}">重新获取${o.payment_method === 'wechat' ? '微信' : '支付宝'}支付链接</button></div>`;
+      return `<div class="pay-box"><p>支付链接已失效或尚未生成。</p><button id="retry-pay" class="btn" data-method="${o.payment_method}">重新获取${o.payment_method === 'wechat' ? '微信' : '支付宝'}支付链接</button></div>${cancelHtml}`;
     }
-    return `<div class="pay-box"><h2>选择支付方式继续付款</h2><div class="actions"><button id="pay-wechat" class="btn" data-method="wechat">微信支付</button><button id="pay-alipay" class="btn" data-method="alipay">支付宝</button></div></div>`;
+    return `<div class="pay-box"><h2>选择支付方式继续付款</h2><div class="actions"><button id="pay-wechat" class="btn" data-method="wechat">微信支付</button><button id="pay-alipay" class="btn" data-method="alipay">支付宝</button></div></div>${cancelHtml}`;
   }
 
   async function render() {
@@ -66,9 +67,11 @@
     const wechatBtn = document.getElementById('pay-wechat');
     const alipayBtn = document.getElementById('pay-alipay');
     const retryBtn = document.getElementById('retry-pay');
+    const cancelBtn = document.getElementById('cancel-order');
     if (wechatBtn) wechatBtn.onclick = () => choose('wechat');
     if (alipayBtn) alipayBtn.onclick = () => choose('alipay');
     if (retryBtn) retryBtn.onclick = () => choose(retryBtn.dataset.method);
+    if (cancelBtn) cancelBtn.onclick = cancelOrder;
 
     if (o.status === 'pending_payment') {
       if (!pollTimer) pollTimer = setInterval(render, 5000);
@@ -83,6 +86,22 @@
     const result = await requestPaymentLink(method);
     if (result === 'redirected') return;
     render();
+  }
+
+  async function cancelOrder() {
+    if (!confirm('确定要取消这个订单吗？取消后将无法继续支付。')) return;
+    const btn = document.getElementById('cancel-order');
+    if (btn) { btn.disabled = true; btn.textContent = '正在取消…'; }
+    try {
+      const r = await fetch('/api/order-cancel', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ orderId: id }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || '取消失败，请稍后重试');
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      render();
+    } catch (e) {
+      alert(e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '取消订单'; }
+    }
   }
 
   function render_loading() {
