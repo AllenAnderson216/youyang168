@@ -42,10 +42,14 @@ export async function onRequestPost({ request, env }) {
       if (!env.ALIPAY_APP_ID) {
         return json({ ok: false, message: '支付宝暂未配置' }, 200);
       }
+      // 按浏览器 UA 判断设备：手机走手机网站支付，电脑走电脑网站支付
+      const ua = request.headers.get('user-agent') || '';
+      const mobile = /Mobile|Android|iPhone|iPad|iPod|HarmonyOS/i.test(ua);
       const paymentHtml = await alipay.buildPagePayForm(env, {
         outTradeNo: orderId,
         subject,
         totalYuan: order.total_cents / 100,
+        mobile,
       });
       await env.DB.prepare(`UPDATE orders SET payment_method = 'alipay' WHERE id = ?`).bind(orderId).run();
       return json({ ok: true, paymentHtml });
