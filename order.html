@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>订单 - 周口云鸿商贸有限公司</title><link rel="stylesheet" href="styles.css"><style>.order-wrap{max-width:800px;margin:0 auto;padding:60px 20px}.status-card{background:#fff;border:1px solid #eee;border-radius:18px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.05)}.status{font-size:28px;font-weight:700;margin:10px 0 20px}.detail{line-height:2}.actions{display:flex;gap:12px;margin-top:24px}.actions .btn{flex:1;text-align:center}.pay-box{margin-top:24px;padding:22px;border-radius:14px;background:#f7f8fa;text-align:center}.qr-fallback{padding:20px;background:#fff;border-radius:12px;margin:14px 0}.qr-fallback a{word-break:break-all}.error{color:#b42318}.muted{color:#777;font-size:14px}</style></head><body><header class="header"><div class="header-inner"><a href="index.html" class="logo">云鸿商贸<span>周口云鸿商贸有限公司</span></a><nav class="nav"><a href="index.html">首页</a><a href="products.html">产品中心</a><a href="contact.html">联系我们</a></nav></div></header><main><div class="order-wrap"><div class="status-card"><div class="section-kicker">ORDER</div><h1>订单详情</h1><div id="content">正在查询订单…</div><div class="actions"><a class="btn" href="products.html">继续购物</a><a class="btn" href="index.html">返回首页</a></div></div></div></main><script src="qrcode.js"></script><script>
 (() => {
   const qs = new URLSearchParams(location.search);
-  const id = qs.get('id');
+  const id = qs.get('id') || qs.get('out_trade_no');
   const el = document.getElementById('content');
   if (!id) { el.innerHTML = '<p>缺少订单号。</p>'; return; }
 
