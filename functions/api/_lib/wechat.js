@@ -2,6 +2,20 @@ import { importPrivateKey, importPublicKey, rsaSign, rsaVerify, aesGcmDecrypt } 
 
 const API_BASE = 'https://api.mch.weixin.qq.com';
 
+// 微信限制商品描述最长 127 字节（不是字符），中文每字 3 字节，这里按字节安全截断。
+function truncateBytes(str, maxBytes) {
+  const enc = new TextEncoder();
+  let out = '';
+  let used = 0;
+  for (const ch of String(str || '')) {
+    const n = enc.encode(ch).length;
+    if (used + n > maxBytes) break;
+    out += ch;
+    used += n;
+  }
+  return out;
+}
+
 function nonceStr() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   return [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -25,7 +39,7 @@ export async function createNativeOrder(env, { outTradeNo, description, totalCen
   const body = {
     appid: env.WECHAT_APPID,
     mchid: env.WECHAT_MCHID,
-    description: description.slice(0, 120),
+    description: truncateBytes(description, 120) || '云鸿商贸订单',
     out_trade_no: outTradeNo,
     notify_url: env.WECHAT_NOTIFY_URL,
     amount: { total: totalCents, currency: 'CNY' },
