@@ -7,7 +7,7 @@ function nextUrl(){var n=new URLSearchParams(location.search).get('next')||'';
 fetch('/api/me',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){if(d.loggedIn)location.replace(nextUrl())}).catch(function(){});
 var timer=null;
 function countdown(s){var b=$('send');b.disabled=true;(function t(){if(s<=0){b.disabled=false;b.textContent='获取验证码';return}b.textContent=s+' 秒后重发';s--;timer=setTimeout(t,1000)})()}
-async function post(url,data){var r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});var d=await r.json().catch(function(){return{}});if(!r.ok){var e=new Error(d.error||('请求失败（HTTP '+r.status+'）'));e.data=d;throw e}return d}
+async function post(url,data){var r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});var d=await r.json().catch(function(){return{}});if(!r.ok){var e=new Error((d.error||('请求失败（HTTP '+r.status+'）'))+(d.detail?' ['+d.detail+']':''));e.data=d;throw e}return d}
 $('send').onclick=async function(){$('err').textContent='';var p=$('phone').value.trim();
   if(!/^1[3-9]\d{9}$/.test(p)){$('err').textContent='请输入正确的 11 位手机号';return}
   $('send').disabled=true;
