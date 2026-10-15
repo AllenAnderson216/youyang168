@@ -58,6 +58,11 @@
   }
 
   renderItems();
+  // 已登录会员自动填充手机号
+  fetch('/api/me', { cache: 'no-store' }).then(r => r.json()).then(m => {
+    const ph = document.querySelector('#checkout-form [name=phone]');
+    if (m.loggedIn && ph && !ph.value) ph.value = m.phone;
+  }).catch(() => {});
   if (!cart.length) return;
 
   document.getElementById('checkout-form').addEventListener('submit', async e => {

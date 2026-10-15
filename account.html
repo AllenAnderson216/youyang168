@@ -1,0 +1,21 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>我的订单 - 周口云鸿商贸有限公司</title><link rel="stylesheet" href="styles.css"><style>.mw{max-width:860px;margin:0 auto;padding:50px 20px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}.top h1{margin:0}.oc{background:#fff;border:1px solid #eee;border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 8px 24px rgba(0,0,0,.04)}.oh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px;color:#666}.tag{padding:3px 10px;border-radius:20px;background:#f1f3f5;color:#333;font-size:13px}.it{margin:10px 0;line-height:1.8}.ft{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}.mut{color:#777;font-size:14px}</style></head><body><header class="header"><div class="header-inner"><a href="index.html" class="logo">云鸿商贸<span>周口云鸿商贸有限公司</span></a><nav class="nav"><a href="index.html">首页</a><a href="products.html">产品中心</a><a href="about.html">关于我们</a><a href="contact.html">联系我们</a></nav></div></header><main><div class="mw"><div class="top"><div><h1>我的订单</h1><div class="mut" id="who"></div></div><button class="btn" id="out" type="button">退出登录</button></div><div id="list" class="mut">加载中…</div></div></main><script>
+(function(){
+var L={pending_payment:'待付款',paid:'已付款，待发货',shipped:'已发货',completed:'已完成',cancelled:'已取消',refunded:'已退款'};
+function esc(s){return String(s==null?'':s).replace(/[&<>'"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]})}
+fetch('/api/me',{cache:'no-store'}).then(function(r){return r.json()}).then(function(m){
+  if(!m.loggedIn){location.replace('login.html?next=account.html');return}
+  document.getElementById('who').textContent='当前账号：'+m.phoneMasked;
+  return fetch('/api/my-orders',{cache:'no-store'}).then(function(r){if(r.status===401){location.replace('login.html?next=account.html');return null}return r.json()}).then(function(d){
+    if(!d)return;var box=document.getElementById('list');
+    if(!d.orders.length){box.innerHTML='还没有订单，<a href="products.html" style="text-decoration:underline">去逛逛</a>';return}
+    box.className='';
+    box.innerHTML=d.orders.map(function(o){
+      return '<div class="oc"><div class="oh"><span>订单号 '+esc(o.id)+'</span><span class="tag">'+esc(L[o.status]||o.status)+'</span></div>'+
+      '<div class="it">'+o.items.map(function(i){return esc(i.product_name)+' × '+esc(i.qty)}).join('<br>')+'</div>'+
+      (o.shipping_no?'<div class="mut">物流：'+esc(o.shipping_company||'')+' '+esc(o.shipping_no)+'</div>':'')+
+      '<div class="ft"><span class="mut">'+esc(o.created_at)+'</span><span><b>¥'+esc(o.total)+'</b> <a class="btn" style="min-height:34px;padding:0 14px;margin-left:8px" href="order.html?id='+encodeURIComponent(o.id)+'">查看详情</a></span></div></div>'}).join('');
+  });
+}).catch(function(){document.getElementById('list').textContent='加载失败，请刷新重试'});
+document.getElementById('out').onclick=function(){fetch('/api/auth-logout',{method:'POST'}).finally(function(){location.replace('index.html')})};
+})();
+</script></body></html>

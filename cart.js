@@ -228,3 +228,11 @@
     }
   });
 })();
+
+// 会员导航入口
+(function () {
+  if (document.querySelector('script[src="member.js"]')) return;
+  var s = document.createElement('script');
+  s.src = 'member.js';
+  document.body.appendChild(s);
+})();
