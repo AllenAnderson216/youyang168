@@ -7,4 +7,4 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "youyang168-db"
-database_id = "0beb9649-4832-43b8-a941-56862b8b5172"
+database_id = "cc672585-6e72-4ccb-84ff-2d83b30c9658"
