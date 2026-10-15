@@ -13,8 +13,35 @@ function pemToArrayBuffer(pem) {
 }
 
 // 导入商户私钥（PKCS8 格式），用于 RSA-SHA256 (PKCS1v1.5) 签名
+function derLen(n) {
+  if (n < 128) return [n];
+  const bytes = [];
+  while (n > 0) { bytes.unshift(n & 0xff); n >>= 8; }
+  return [0x80 | bytes.length, ...bytes];
+}
+
+// 支付宝密钥工具可能生成 PKCS1 格式私钥（BEGIN RSA PRIVATE KEY），Web Crypto 只认 PKCS8，这里自动转换。
+function pkcs1ToPkcs8(pkcs1Buf) {
+  const pkcs1 = new Uint8Array(pkcs1Buf);
+  const algId = [0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00];
+  const octet = [0x04, ...derLen(pkcs1.length)];
+  const inner = [0x02, 0x01, 0x00, ...algId, ...octet];
+  const total = inner.length + pkcs1.length;
+  const out = new Uint8Array([0x30, ...derLen(total), ...inner, ...pkcs1]);
+  return out.buffer;
+}
+
+function isPkcs1(buf) {
+  const b = new Uint8Array(buf);
+  // SEQUENCE { INTEGER 0, ... }：PKCS1 里第二个元素是 INTEGER(modulus)，PKCS8 里是 SEQUENCE(algorithm)
+  const lenBytes = b[1] & 0x80 ? (b[1] & 0x7f) : 0;
+  const o = 2 + lenBytes;
+  return b[o] === 0x02 && b[o + 1] === 0x01 && b[o + 2] === 0x00 && b[o + 3] === 0x02;
+}
+
 export async function importPrivateKey(pem) {
-  const der = pemToArrayBuffer(pem);
+  let der = pemToArrayBuffer(pem);
+  if (isPkcs1(der)) der = pkcs1ToPkcs8(der);
   return crypto.subtle.importKey(
     'pkcs8',
     der,

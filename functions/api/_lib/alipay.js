@@ -1,6 +1,9 @@
 import { importPrivateKey, importPublicKey, rsaSign, rsaVerify } from './pem.js';
 
-const GATEWAY = 'https://openapi.alipay.com/gateway.do';
+const PROD_GATEWAY = 'https://openapi.alipay.com/gateway.do';
+// 沙箱测试时在环境变量里设置 ALIPAY_GATEWAY=https://openapi-sandbox.dl.alipaydev.com/gateway.do
+// 正式上线时删除该变量即可回到正式网关。
+const gatewayOf = env => (env.ALIPAY_GATEWAY || PROD_GATEWAY).trim();
 
 function formatTimestamp(date = new Date()) {
   // 支付宝要求北京时间 yyyy-MM-dd HH:mm:ss
@@ -55,7 +58,7 @@ export async function buildPagePayForm(env, { outTradeNo, subject, totalYuan }) 
     .map(k => `<input type="hidden" name="${k}" value="${escapeAttr(params[k])}">`)
     .join('');
   return `<!doctype html><html><head><meta charset="utf-8"><title>正在跳转支付宝…</title></head><body>
-<form id="alipay-form" action="${GATEWAY}" method="POST">${inputs}</form>
+<form id="alipay-form" action="${escapeAttr(gatewayOf(env))}" method="POST">${inputs}</form>
 <p>正在跳转到支付宝，请稍候…</p>
 <script>document.getElementById('alipay-form').submit();</script>
 </body></html>`;
@@ -99,7 +102,7 @@ export async function createRefund(env, { outTradeNo, refundAmountYuan, reason }
   params.sign = await signParams(env, params);
 
   const body = new URLSearchParams(params).toString();
-  const resp = await fetch(GATEWAY, {
+  const resp = await fetch(gatewayOf(env), {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body,
