@@ -9,9 +9,11 @@ function formatTimestamp(date = new Date()) {
   return `${beijing.getUTCFullYear()}-${pad(beijing.getUTCMonth() + 1)}-${pad(beijing.getUTCDate())} ${pad(beijing.getUTCHours())}:${pad(beijing.getUTCMinutes())}:${pad(beijing.getUTCSeconds())}`;
 }
 
-function buildSignString(params) {
+// excludeSignType: 验证支付宝异步通知时必须同时排除 sign 和 sign_type；
+// 自己发起请求签名时只排除 sign（sign_type 要参与签名）。
+function buildSignString(params, excludeSignType = false) {
   return Object.keys(params)
-    .filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '' && k !== 'sign')
+    .filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '' && k !== 'sign' && !(excludeSignType && k === 'sign_type'))
     .sort()
     .map(k => `${k}=${params[k]}`)
     .join('&');
@@ -70,7 +72,7 @@ function escapeAttr(s) {
 export async function verifyNotify(env, formData) {
   const sign = formData.sign;
   if (!sign) return false;
-  const signStr = buildSignString(formData);
+  const signStr = buildSignString(formData, true);
   const publicKey = await importPublicKey(env.ALIPAY_PUBLIC_KEY);
   return rsaVerify(publicKey, signStr, sign);
 }
