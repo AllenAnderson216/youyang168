@@ -25,6 +25,11 @@ export async function onRequestPost({ request, env }) {
     return fail('缺少验签请求头');
   }
 
+  // 防重放：回调时间戳与当前时间相差超过 5 分钟则拒绝
+  if (!Number.isFinite(Number(timestamp)) || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) {
+    return fail('回调时间戳无效');
+  }
+
   let valid;
   try {
     valid = await wechat.verifyNotifySignature(env, { timestamp, nonce, body: bodyText, signature, serial });
@@ -52,7 +57,8 @@ export async function onRequestPost({ request, env }) {
     return fail('解密失败: ' + e.message);
   }
 
-  const { out_trade_no, trade_state, transaction_id, amount } = resourceData;
+  const { out_trade_no, trade_state, transaction_id, amount, mchid } = resourceData;
+  if (mchid && mchid !== env.WECHAT_MCHID) return fail('商户号不一致');
   if (trade_state !== 'SUCCESS') {
     // 非成功状态（如 NOTPAY/CLOSED），确认收到，不更新订单
     return ok();
@@ -70,7 +76,8 @@ export async function onRequestPost({ request, env }) {
   const dup = await env.DB.prepare(`SELECT id FROM payment_notifications WHERE id = ?`).bind(transaction_id).first();
   if (dup) return ok();
 
-  if (order.status === 'pending_payment') {
+  // 待付款订单正常入账；已被取消的订单如果顾客实际付了款，也要入账，由后台人工决定发货或退款。
+  if (order.status === 'pending_payment' || order.status === 'cancelled') {
     await env.DB.batch([
       env.DB.prepare(
         `UPDATE orders SET status = 'paid', payment_method = 'wechat', payment_trade_no = ?, paid_at = datetime('now') WHERE id = ?`

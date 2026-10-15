@@ -36,7 +36,9 @@ export async function onRequestPost({ request, env }) {
   const dup = await env.DB.prepare(`SELECT id FROM payment_notifications WHERE id = ?`).bind(trade_no).first();
   if (dup) return respond('success');
 
-  if (order.status === 'pending_payment') {
+  // 待付款订单正常入账；已被取消的订单如果顾客实际付了款，也要入账（否则钱收了订单却是作废状态），
+  // 由后台人工决定发货或退款。
+  if (order.status === 'pending_payment' || order.status === 'cancelled') {
     await env.DB.batch([
       env.DB.prepare(
         `UPDATE orders SET status = 'paid', payment_method = 'alipay', payment_trade_no = ?, paid_at = datetime('now') WHERE id = ?`
