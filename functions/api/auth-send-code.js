@@ -72,7 +72,7 @@ export async function onRequestPost({ request, env }) {
     if (rowId) await env.DB.prepare(`DELETE FROM sms_codes WHERE id = ?`).bind(rowId).run();
     const out = { error: '短信发送失败，请稍后重试' };
     if (env.SMS_DEBUG === '1') out.detail = e.message;
-    return json(out, 502);
+    return json(out, 400);
   }
 
   return json({ ok: true, cooldown: COOLDOWN_MS / 1000 });
