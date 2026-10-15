@@ -65,7 +65,7 @@
     if (!cart.length) return;
     msg.textContent = '正在创建订单…';
     const fd = new FormData(e.currentTarget);
-    const payload = { customer:{ name:fd.get('name'), phone:fd.get('phone'), email:fd.get('email'), address:fd.get('address'), note:fd.get('note') }, items:cart.map(i => ({id:i.id,qty:i.qty})) };
+    const payload = { customer:{ name:fd.get('name'), phone:fd.get('phone'), address:fd.get('address'), note:fd.get('note') }, items:cart.map(i => ({id:i.id,qty:i.qty})) };
     try {
       const r = await fetch('/api/order',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
       const data = await r.json(); if (!r.ok) throw new Error(data.error || '订单创建失败');
