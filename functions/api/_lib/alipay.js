@@ -38,16 +38,27 @@ async function signParams(env, params) {
  * 生成"电脑网站支付"自动提交表单 HTML。
  * 前端拿到这段 HTML 后 document.write，浏览器会自动跳转到支付宝收银台。
  */
-export async function buildPagePayForm(env, { outTradeNo, subject, totalYuan }) {
-  const bizContent = JSON.stringify({
+export async function buildPagePayForm(env, { outTradeNo, subject, totalYuan, mobile = false }) {
+  // mobile=true：手机网站支付 alipay.trade.wap.pay（QUICK_WAP_WAY），会唤起支付宝 App 或 H5 收银台；
+  // mobile=false：电脑网站支付 alipay.trade.page.pay（FAST_INSTANT_TRADE_PAY）。
+  const biz = {
     out_trade_no: outTradeNo,
-    product_code: 'FAST_INSTANT_TRADE_PAY',
+    product_code: mobile ? 'QUICK_WAP_WAY' : 'FAST_INSTANT_TRADE_PAY',
     total_amount: totalYuan.toFixed(2),
     subject: subject.slice(0, 200),
-  });
+  };
+  if (mobile) {
+    // 用户在支付宝收银台中途点返回/退出时回到的页面
+    try {
+      const u = new URL(env.ALIPAY_RETURN_URL);
+      u.searchParams.set('id', outTradeNo);
+      biz.quit_url = u.toString();
+    } catch { /* ALIPAY_RETURN_URL 非法时不带 quit_url */ }
+  }
+  const bizContent = JSON.stringify(biz);
   const params = {
     app_id: env.ALIPAY_APP_ID,
-    method: 'alipay.trade.page.pay',
+    method: mobile ? 'alipay.trade.wap.pay' : 'alipay.trade.page.pay',
     format: 'JSON',
     charset: 'utf-8',
     sign_type: 'RSA2',
