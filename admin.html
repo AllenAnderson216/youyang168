@@ -93,6 +93,10 @@ button,input,select{font:inherit;color:inherit}
 .order-foot{display:flex;align-items:center;gap:12px;padding:12px 20px;border-top:1px solid #f0ebe5;flex-wrap:wrap}
 .times{color:var(--muted);font-size:12.5px;display:flex;gap:16px;flex-wrap:wrap}
 .actions{margin-left:auto;display:flex;gap:8px}
+.pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin:24px auto 0}
+.pagination[hidden]{display:none!important}
+.pagination button{min-width:96px}
+.pagination span{min-width:180px;text-align:center;color:var(--muted);font-size:13px}
 
 /* ---------- 空 / 骨架 ---------- */
 .state{background:#fff;border:1px dashed #d9d2ca;border-radius:14px;padding:56px 20px;text-align:center;color:var(--muted)}
@@ -199,6 +203,7 @@ dialog input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px r
 
     <div class="meta" id="meta"></div>
     <section class="list" id="rows" aria-live="polite"></section>
+    <nav class="pagination" id="listPagination" aria-label="列表分页" hidden><button class="btn" id="prevPage" type="button">上一页</button><span id="pageInfo"></span><button class="btn" id="nextPage" type="button">下一页</button></nav>
   </main>
 </div>
 
@@ -232,6 +237,11 @@ const REFUND = { processing: '退款处理中', success: '退款成功', failed:
 let status = '';
 let orders = [];
 let members = [];
+let orderTotal = 0;
+let memberTotal = 0;
+let orderPage = 1;
+let memberPage = 1;
+const adminPageSize = 20;
 let view = 'orders';
 let loadSeq = 0;
 
@@ -308,12 +318,22 @@ function orderCard(o) {
 
 function render() {
   const box = $('rows');
-  $('meta').textContent = orders.length ? `共 ${orders.length} 笔订单` : '';
+  $('meta').textContent = orderTotal ? `共 ${orderTotal} 笔订单` : '';
   if (!orders.length) {
     box.innerHTML = `<div class="state"><strong>没有符合条件的订单</strong>换个状态或关键词试试</div>`;
+    $('listPagination').hidden = true;
     return;
   }
   box.innerHTML = orders.map(orderCard).join('');
+  renderPagination(orderTotal, orderPage);
+}
+
+function renderPagination(total, page) {
+  const pages = Math.max(1, Math.ceil(total / adminPageSize));
+  $('listPagination').hidden = total <= adminPageSize;
+  $('pageInfo').textContent = `第 ${page} / ${pages} 页 · 共 ${total} 条`;
+  $('prevPage').disabled = page <= 1;
+  $('nextPage').disabled = page >= pages;
 }
 
 const load = () => (view === 'orders' ? loadOrders() : loadMembers());
@@ -325,12 +345,14 @@ async function loadOrders() {
     $('meta').innerHTML = '<span class="spin"></span>加载中…';
   }
   try {
-    const p = new URLSearchParams({ q: $('q').value.trim(), status });
+    const p = new URLSearchParams({ q: $('q').value.trim(), status, page: String(orderPage) });
     const d = await api('/api/admin-orders?' + p);
     if (seq !== loadSeq) return;           // 忽略过期请求
     $('login').classList.add('hidden');
     $('app').classList.remove('hidden');
     orders = d.orders || [];
+    orderTotal = Number(d.total) || 0;
+    orderPage = Number(d.page) || 1;
     render();
   } catch (e) {
     if (e.message !== '请重新登录') {
@@ -356,23 +378,26 @@ function memberCard(m) {
 
 function renderMembers() {
   const box = $('rows');
-  $('meta').innerHTML = members.length
-    ? `共 ${members.length} 位会员<button class="btn danger sm right" data-act="mclear">清空全部会员</button>`
+  $('meta').innerHTML = memberTotal
+    ? `共 ${memberTotal} 位会员<button class="btn danger sm right" data-act="mclear">清空全部会员</button>`
     : '';
   box.innerHTML = members.length
     ? members.map(memberCard).join('')
     : `<div class="state"><strong>没有会员</strong>还没有人注册，或没有符合搜索的手机号</div>`;
+  renderPagination(memberTotal, memberPage);
 }
 
 async function loadMembers() {
   const seq = ++loadSeq;
   if (!$('app').classList.contains('hidden')) $('meta').innerHTML = '<span class="spin"></span>加载中…';
   try {
-    const d = await api('/api/admin-members?' + new URLSearchParams({ q: $('q').value.trim() }));
+    const d = await api('/api/admin-members?' + new URLSearchParams({ q: $('q').value.trim(), page: String(memberPage) }));
     if (seq !== loadSeq || view !== 'members') return;
     $('login').classList.add('hidden');
     $('app').classList.remove('hidden');
     members = d.members || [];
+    memberTotal = Number(d.total) || 0;
+    memberPage = Number(d.page) || 1;
     renderMembers();
   } catch (e) {
     if (e.message !== '请重新登录') { $('meta').textContent = ''; toast(e.message, true); }
@@ -389,7 +414,7 @@ function delMember(id, phone) {
 
 function clearMembers() {
   openDialog({
-    title: '清空全部会员', text: `将删除全部 ${members.length} 位会员账号，无法恢复。订单不会被删除。`,
+    title: '清空全部会员', text: `将删除全部 ${memberTotal} 位会员账号，无法恢复。订单不会被删除。`,
     okText: '确认清空', danger: true,
     fields: [{ id: 'confirm', label: '请输入「清空」二字确认', required: true }],
     onSubmit: async v => {
@@ -413,6 +438,18 @@ function switchView(v) {
   load();
 }
 $('nav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) switchView(b.dataset.view); });
+
+$('listPagination').addEventListener('click', e => {
+  if (e.target.closest('#prevPage')) {
+    if (view === 'orders' && orderPage > 1) orderPage--;
+    if (view === 'members' && memberPage > 1) memberPage--;
+    load();
+  } else if (e.target.closest('#nextPage')) {
+    if (view === 'orders') orderPage++;
+    if (view === 'members') memberPage++;
+    load();
+  }
+});
 
 /* ---------- 对话框 ---------- */
 const dlg = $('dlg');
@@ -527,12 +564,13 @@ $('tabs').addEventListener('click', e => {
   const t = e.target.closest('.tab');
   if (!t) return;
   status = t.dataset.status;
+  orderPage = 1;
   document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-pressed', x === t ? 'true' : 'false'));
   load();
 });
-$('searchForm').onsubmit = e => { e.preventDefault(); load(); };
+$('searchForm').onsubmit = e => { e.preventDefault(); if (view === 'orders') orderPage = 1; else memberPage = 1; load(); };
 let qTimer;
-$('q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(load, 350); });
+$('q').addEventListener('input', () => { if (view === 'orders') orderPage = 1; else memberPage = 1; clearTimeout(qTimer); qTimer = setTimeout(load, 350); });
 $('refresh').onclick = load;
 
 $('loginForm').onsubmit = async e => {
