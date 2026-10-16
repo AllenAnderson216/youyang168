@@ -29,7 +29,7 @@ export async function onRequestGet({ request, env }) {
 
   const count = await env.DB.prepare(`SELECT COUNT(*) AS total FROM users u${where}`).bind(...binds).first();
   const total = Number(count?.total || 0);
-  const pageSize = 20;
+  const pageSize = 10;
   const requestedPage = Math.max(1, Number.parseInt(new URL(request.url).searchParams.get('page') || '1', 10) || 1);
   const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
 

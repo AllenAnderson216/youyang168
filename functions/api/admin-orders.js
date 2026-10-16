@@ -22,7 +22,7 @@ export async function onRequestGet({ request, env }) {
   }
   const totalRow = await env.DB.prepare(`SELECT COUNT(*) AS total FROM orders WHERE 1=1${sql.slice('SELECT * FROM orders WHERE 1=1'.length)}`).bind(...binds).first();
   const total = Number(totalRow?.total || 0);
-  const pageSize = 20;
+  const pageSize = 10;
   const requestedPage = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
   sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
