@@ -27,14 +27,20 @@ export async function onRequestGet({ request, env }) {
     binds.push(`%${q}%`);
   }
 
+  const count = await env.DB.prepare(`SELECT COUNT(*) AS total FROM users u${where}`).bind(...binds).first();
+  const total = Number(count?.total || 0);
+  const pageSize = 20;
+  const requestedPage = Math.max(1, Number.parseInt(new URL(request.url).searchParams.get('page') || '1', 10) || 1);
+  const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
+
   const res = await env.DB.prepare(
     `SELECT u.id, u.phone, u.created_at, u.last_login_at,
             (SELECT COUNT(*) FROM orders o
               WHERE REPLACE(REPLACE(o.phone, ' ', ''), '-', '') IN (u.phone, '+86' || u.phone, '86' || u.phone)) AS order_count
        FROM users u${where}
       ORDER BY u.created_at DESC, u.id DESC
-      LIMIT 500`
-  ).bind(...binds).all();
+      LIMIT ? OFFSET ?`
+  ).bind(...binds, pageSize, (page - 1) * pageSize).all();
 
   const members = (res.results || []).map(m => ({
     id: m.id,
@@ -44,7 +50,7 @@ export async function onRequestGet({ request, env }) {
     order_count: m.order_count || 0,
   }));
 
-  return json({ members }, 200, { 'cache-control': 'no-store' });
+  return json({ members, total, page, pageSize }, 200, { 'cache-control': 'no-store' });
 }
 
 export async function onRequestPost({ request, env }) {
